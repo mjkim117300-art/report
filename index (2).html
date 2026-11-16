@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교외체험학습 결과보고서(별지) 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Noto Sans KR", sans-serif; background: #f2f3f5; color: #1f2328;
+  }
+  header.top { background: #1f3a5f; color: #fff; padding: 16px 20px; }
+  header.top h1 { margin: 0; font-size: 18px; }
+  header.top p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+  .wrap { display: flex; gap: 20px; padding: 20px; flex-wrap: wrap; align-items: flex-start; max-width: 1100px; margin: 0 auto; }
+  .panel { background: #fff; border-radius: 12px; padding: 18px; flex: 1 1 340px; max-width: 440px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .preview { flex: 1 1 420px; display: flex; justify-content: center; }
+  .preview canvas { width: 100%; max-width: 560px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .sec { margin-bottom: 20px; }
+  label.f { display: block; font-size: 13px; margin-bottom: 4px; color: #57606a; }
+  input[type=text], input[type=number] {
+    width: 100%; padding: 10px; font-size: 16px; border: 1px solid #d0d7de; border-radius: 8px; font-family: inherit;
+  }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .slot {
+    position: relative; aspect-ratio: 4/3; border: 2px dashed #c4ccd4; border-radius: 10px; background: #f8f9fa;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; font-size: 13px; color: #8b949e;
+  }
+  .slot img { width: 100%; height: 100%; object-fit: cover; }
+  .slot .num { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; border-radius: 10px; padding: 1px 8px; }
+  .slot .del { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 24px; padding: 0; display: none; }
+  .slot.has { border-style: solid; border-color: #1f3a5f; }
+  .slot.has .del { display: block; }
+  .cover-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 1; font-size: 0; }
+  .slot .del { z-index: 2; }
+  .btn.pick { position: relative; overflow: hidden; text-align: center; }
+  .btn { display: block; width: 100%; padding: 12px; font-size: 15px; font-family: inherit; border-radius: 8px; border: 1px solid #d0d7de; background: #fff; cursor: pointer; margin-top: 8px; }
+  .btn.primary { background: #1f3a5f; color: #fff; border-color: #1f3a5f; font-weight: 700; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .seg { display: flex; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }
+  .seg button { flex: 1; padding: 9px; border: 0; background: #fff; font-family: inherit; font-size: 13px; cursor: pointer; }
+  .seg button.on { background: #1f3a5f; color: #fff; }
+  .hint { font-size: 12px; color: #6e7781; margin-top: 6px; line-height: 1.5; }
+  #msg { font-size: 13px; margin-top: 8px; min-height: 18px; color: #1f3a5f; }
+  #msg.err { color: #c62828; }
+  #result { display:none; margin-top: 12px; padding: 14px; border: 2px solid #1f3a5f; border-radius: 10px; background: #f5f8fc; }
+  #result a.btn { text-decoration: none; text-align: center; color: inherit; }
+  #result a.btn.primary { color: #fff; }
+  #result .img-fallback { margin-top: 12px; font-size: 13px; color: #57606a; }
+  #result .img-fallback img { width: 100%; margin-top: 6px; border: 1px solid #d0d7de; }
+  #kakao { display:none; background:#fee500; color:#191919; padding:14px 18px; font-size:14px; line-height:1.6; }
+  #kakao b { display:block; font-size:15px; margin-bottom:4px; }
+  #kakao button { margin-top:8px; padding:8px 14px; border:0; border-radius:8px; background:#191919; color:#fff; font-family:inherit; font-size:14px; }
+</style>
+</head>
+<body>
+<div id="kakao">
+  <b>카카오톡 안에서는 사진 선택·PDF 저장이 잘 안 될 수 있어요.</b>
+  크롬이나 사파리로 다시 열어 주세요.<br>
+  · 갤럭시: 오른쪽 아래 ⋮ → <b style="display:inline">다른 브라우저로 열기</b><br>
+  · 아이폰: 오른쪽 아래 공유 버튼 → <b style="display:inline">Safari로 열기</b>
+  <br><button id="kakaoOpen">기본 브라우저로 열기</button>
+</div>
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  if (!/KAKAOTALK/i.test(ua)) return;
+  var box = document.getElementById('kakao');
+  box.style.display = 'block';
+  var isWeb = /^https?:$/.test(location.protocol);
+  var go = function () {
+    if (isWeb) location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+  };
+  document.getElementById('kakaoOpen').onclick = go;
+  if (!isWeb) document.getElementById('kakaoOpen').style.display = 'none';
+  go();
+})();
+</script>
+<header class="top">
+  <h1>「학교장허가 교외체험학습」 결과보고서(별지) 만들기</h1>
+  <p>이름·학번을 입력하고 사진 4장을 고르면 양식이 채워집니다. 마지막에 PDF로 저장하세요.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="sec">
+      <h2>1. 학생 정보</h2>
+      <label class="f" for="name">성명</label>
+      <input type="text" id="name" placeholder="예: 홍길동" autocomplete="off">
+      <div class="row3" style="margin-top:10px">
+        <div><label class="f" for="grade">학년</label><input type="number" id="grade" min="1" max="3" inputmode="numeric"></div>
+        <div><label class="f" for="cls">반</label><input type="number" id="cls" min="1" inputmode="numeric"></div>
+        <div><label class="f" for="no">번호</label><input type="number" id="no" min="1" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>2. 사진 4장</h2>
+      <div class="slots" id="slots"></div>
+      <label class="btn pick" for="multiFile">사진 여러 장 한꺼번에 고르기<input type="file" id="multiFile" accept="image/*" multiple class="cover-input"></label>
+      <div class="hint">칸을 누르면 그 칸의 사진만 바꿀 수 있어요. 여러 장을 고르면 빈칸부터 순서대로 들어갑니다.</div>
+    </div>
+
+    <div class="sec">
+      <h2>3. 사진 맞추는 방식</h2>
+      <div class="seg" id="fitSeg">
+        <button data-fit="contain" class="on">사진 전체 보이기</button>
+        <button data-fit="cover">칸에 꽉 채우기</button>
+      </div>
+      <div class="hint">전체 보이기는 사진이 잘리지 않는 대신 여백이 생기고, 꽉 채우기는 칸 밖으로 넘치는 부분이 잘립니다.</div>
+    </div>
+
+    <button class="btn primary" id="save">PDF로 저장</button>
+    <button class="btn" id="reset">처음부터 다시</button>
+    <div id="msg"></div>
+    <div id="result"></div>
+  </div>
+
+  <div class="preview"><canvas id="cv"></canvas></div>
+</div>
+
+<script>
+(() => {
+  // A4 in mm, drawn at S px per mm
+  const S = 8, W = 210, H = 297;
+  const cv = document.getElementById('cv');
+  cv.width = W * S; cv.height = H * S;
+  const ctx = cv.getContext('2d');
+
+  const photos = [null, null, null, null];
+  let fit = 'contain';
+  const FONT = '"Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif';
+
+  const $ = id => document.getElementById(id);
+  const fields = ['name', 'grade', 'cls', 'no'];
+
+  // Layout (mm)
+  const L = 15, R = 195, top = 32, hdrH = 8, bodyTop = top + hdrH, bottom = 282;
+  const midX = (L + R) / 2, midY = (bodyTop + bottom) / 2;
+  const cols = [L, L + 27, L + 80, L + 107, R];
+  const cells = [
+    [L, bodyTop, midX, midY], [midX, bodyTop, R, midY],
+    [L, midY, midX, bottom], [midX, midY, R, bottom]
+  ];
+
+  function m(v) { return v * S; }
+
+  function text(str, x, y, sizePt, weight, align) {
+    ctx.font = `${weight} ${sizePt * 0.3528 * S}px ${FONT}`;
+    ctx.textAlign = align || 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000';
+    ctx.fillText(str, m(x), m(y));
+  }
+
+  function spaced(str) { return str.split('').join(' '); }
+
+  function draw() {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    // Title
+    text('「학교장허가 교외체험학습」 결과보고서(별지)', W / 2, 22, 17, 700);
+
+    // Photos first (lines drawn on top)
+    const pad = 2.5;
+    cells.forEach((c, i) => {
+      const img = photos[i];
+      if (!img) return;
+      const x = m(c[0] + pad), y = m(c[1] + pad), w = m(c[2] - c[0] - pad * 2), h = m(c[3] - c[1] - pad * 2);
+      const ir = img.width / img.height, cr = w / h;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      if (fit === 'cover') {
+        let sw, sh, sx, sy;
+        if (ir > cr) { sh = img.height; sw = sh * cr; sx = (img.width - sw) / 2; sy = 0; }
+        else { sw = img.width; sh = sw / cr; sx = 0; sy = (img.height - sh) / 2; }
+        ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+      } else {
+        let dw, dh;
+        if (ir > cr) { dw = w; dh = w / ir; } else { dh = h; dw = h * ir; }
+        ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      }
+      ctx.restore();
+    });
+
+    // Header label backgrounds
+    ctx.fillStyle = '#e6e6e6';
+    ctx.fillRect(m(cols[0]), m(top), m(cols[1] - cols[0]), m(hdrH));
+    ctx.fillRect(m(cols[2]), m(top), m(cols[3] - cols[2]), m(hdrH));
+
+    // Lines
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = S * 0.35;
+    ctx.strokeRect(m(L), m(top), m(R - L), m(bottom - top));
+    ctx.beginPath();
+    ctx.moveTo(m(L), m(bodyTop)); ctx.lineTo(m(R), m(bodyTop));
+    [1, 2, 3].forEach(i => { ctx.moveTo(m(cols[i]), m(top)); ctx.lineTo(m(cols[i]), m(bodyTop)); });
+    ctx.moveTo(m(midX), m(bodyTop)); ctx.lineTo(m(midX), m(bottom));
+    ctx.stroke();
+    ctx.save();
+    ctx.setLineDash([S * 0.6, S * 0.6]);
+    ctx.lineWidth = S * 0.25;
+    ctx.beginPath(); ctx.moveTo(m(L), m(midY)); ctx.lineTo(m(R), m(midY)); ctx.stroke();
+    ctx.restore();
+
+    // Header text
+    const cy = top + hdrH / 2;
+    text('성   명', (cols[0] + cols[1]) / 2, cy, 9, 700);
+    text('학 년 반', (cols[2] + cols[3]) / 2, cy, 9, 700);
+    const name = $('name').value.trim();
+    if (name) text(spaced(name), (cols[1] + cols[2]) / 2, cy, 11, 400);
+
+    const g = $('grade').value.trim(), c = $('cls').value.trim(), n = $('no').value.trim();
+    // "제 _ 학년 _ 반 _ 번"
+    const vx0 = cols[3], vx1 = cols[4], span = vx1 - vx0;
+    const parts = [
+      ['제', 0.10, 9, 700], [g, 0.25, 11, 400], ['학년', 0.37, 9, 700],
+      [c, 0.53, 11, 400], ['반', 0.65, 9, 700], [n, 0.80, 11, 400], ['번', 0.92, 9, 700]
+    ];
+    parts.forEach(([s, f, pt, wt]) => { if (s) text(s, vx0 + span * f, cy, pt, wt); });
+  }
+
+  // Slots UI
+  const slotsEl = $('slots');
+  function renderSlots() {
+    slotsEl.innerHTML = '';
+    photos.forEach((img, i) => {
+      const d = document.createElement('div');
+      d.className = 'slot' + (img ? ' has' : '');
+      d.innerHTML = `<span class="num">${i + 1}</span>` + (img ? '' : '눌러서 사진 선택');
+      if (img) { const t = document.createElement('img'); t.src = img._src; d.appendChild(t); }
+      const del = document.createElement('button');
+      del.className = 'del'; del.textContent = '×'; del.title = '사진 빼기';
+      del.onclick = e => { e.stopPropagation(); photos[i] = null; update(); };
+      d.appendChild(del);
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*'; inp.className = 'cover-input';
+      inp.onchange = async e => {
+        const f = e.target.files[0];
+        if (!f) return;
+        try { photos[i] = await loadImage(f); update(); } catch (err) { say(err.message, true); }
+      };
+      d.appendChild(inp);
+      slotsEl.appendChild(d);
+    });
+  }
+
+  function loadImage(file) {
+    return new Promise((res, rej) => {
+      const fromData = () => {
+        const fr = new FileReader();
+        fr.onload = () => {
+          const img2 = new Image();
+          img2.onload = () => { img2._src = fr.result; res(img2); };
+          img2.onerror = () => rej(new Error('이 사진 형식은 읽지 못했어요. JPG나 PNG 사진으로 골라 주세요.'));
+          img2.src = fr.result;
+        };
+        fr.onerror = () => rej(new Error('사진을 읽지 못했어요.'));
+        fr.readAsDataURL(file);
+      };
+      let url;
+      try { url = URL.createObjectURL(file); } catch (e) { fromData(); return; }
+      const img = new Image();
+      img.onload = () => { img._src = url; res(img); };
+      img.onerror = () => fromData();
+      img.src = url;
+    });
+  }
+
+  $('multiFile').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    if (!files.length) return;
+    let empties = photos.map((p, i) => p ? -1 : i).filter(i => i >= 0);
+    if (empties.length === 0 || files.length >= 4) empties = [0, 1, 2, 3];
+    const use = files.slice(0, empties.length);
+    for (let k = 0; k < use.length; k++) {
+      try { photos[empties[k]] = await loadImage(use[k]); } catch (err) { say(err.message, true); }
+    }
+    if (files.length > 4) say('사진은 4장까지만 들어가서 앞의 4장만 넣었어요.');
+    update();
+  };
+
+  document.querySelectorAll('#fitSeg button').forEach(b => {
+    b.onclick = () => {
+      fit = b.dataset.fit;
+      document.querySelectorAll('#fitSeg button').forEach(x => x.classList.toggle('on', x === b));
+      draw();
+    };
+  });
+
+  fields.forEach(id => $(id).addEventListener('input', draw));
+
+  $('reset').onclick = () => {
+    fields.forEach(id => $(id).value = '');
+    photos.fill(null);
+    say('');
+    hideResult();
+    update();
+  };
+
+  function say(t, err) { const el = $('msg'); el.textContent = t; el.className = err ? 'err' : ''; }
+
+  function update() { renderSlots(); draw(); }
+
+  // Downloads capability (when published), with a plain-download fallback
+  let dlPromise = null;
+  function getDownloads() {
+    if (!dlPromise) {
+      dlPromise = (window.claude && typeof window.claude.use === 'function')
+        ? Promise.race([window.claude.use('downloads').catch(() => null), new Promise(r => setTimeout(() => r(null), 4000))])
+        : Promise.resolve(null);
+    }
+    return dlPromise;
+  }
+  setTimeout(getDownloads, 0);
+
+  $('save').onclick = async () => {
+    const name = $('name').value.trim();
+    const g = $('grade').value.trim(), c = $('cls').value.trim(), n = $('no').value.trim();
+    const missing = [];
+    if (!name) missing.push('성명');
+    if (!g || !c || !n) missing.push('학년·반·번호');
+    const cnt = photos.filter(Boolean).length;
+    if (cnt < 4) missing.push(`사진 ${4 - cnt}장`);
+    if (missing.length) { say(missing.join(', ') + '이(가) 비어 있어요.', true); return; }
+
+    const btn = $('save'); btn.disabled = true; say('PDF를 만드는 중…');
+    try {
+      draw();
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, W, H);
+      const filename = `교외체험학습결과보고서_${g}학년${c}반${n}번_${name}.pdf`;
+      const blob = pdf.output('blob');
+      const dl = await getDownloads();
+      if (dl) {
+        try {
+          await dl.save({ filename, data: blob });
+          say('저장했어요.');
+        } catch (err) {
+          if (err && err.code === 'declined') say('저장을 취소했어요.');
+          else if (err && err.code === 'rate_limited') say('저장 창이 이미 열려 있어요. 잠시 후 다시 눌러 주세요.', true);
+          else { showResult(blob, filename); }
+        }
+      } else {
+        showResult(blob, filename);
+      }
+    } catch (err) {
+      say('PDF를 만들지 못했어요: ' + (err && err.message ? err.message : err), true);
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  let lastUrl = null;
+  function showResult(blob, filename) {
+    if (lastUrl) URL.revokeObjectURL(lastUrl);
+    lastUrl = URL.createObjectURL(blob);
+    const box = $('result');
+    box.innerHTML = '';
+    const head = document.createElement('div');
+    head.style.cssText = 'font-weight:700;margin-bottom:4px';
+    head.textContent = 'PDF가 만들어졌어요. 아래 버튼을 눌러 저장하세요.';
+    box.appendChild(head);
+
+    const a = document.createElement('a');
+    a.className = 'btn primary'; a.href = lastUrl; a.download = filename; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'PDF 내려받기';
+    box.appendChild(a);
+
+    let file = null;
+    try { file = new File([blob], filename, { type: 'application/pdf' }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      const sh = document.createElement('button');
+      sh.className = 'btn primary';
+      sh.style.background = '#fee500'; sh.style.color = '#191919'; sh.style.borderColor = '#fee500';
+      sh.textContent = '📤 PDF 공유하기 (카톡·메일로 보내기)';
+      sh.onclick = async () => {
+        try { await navigator.share({ files: [file], title: filename }); }
+        catch (e) { if (e && e.name !== 'AbortError') say('공유하지 못했어요. "PDF 내려받기"를 눌러 주세요.', true); }
+      };
+      box.insertBefore(sh, a);
+    }
+
+    const fb = document.createElement('div');
+    fb.className = 'img-fallback';
+    fb.innerHTML = '그래도 저장이 안 되면 아래 그림을 <b>길게 눌러 "이미지 저장"</b>하세요. (PDF 대신 사진으로 저장됩니다)';
+    const img = document.createElement('img');
+    img.src = cv.toDataURL('image/jpeg', 0.9);
+    img.alt = '결과보고서 이미지';
+    fb.appendChild(img);
+    box.appendChild(fb);
+
+    box.style.display = 'block';
+    say('');
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // PC에서는 바로 내려받기
+    if (!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
+      try { a.click(); say('저장했어요. 다운로드 폴더를 확인하세요.'); } catch (e) {}
+    }
+  }
+
+  // 입력이 바뀌면 이전 결과는 숨김
+  const hideResult = () => { $('result').style.display = 'none'; };
+  fields.forEach(id => $(id).addEventListener('input', hideResult));
+  document.addEventListener('change', e => { if (e.target.type === 'file') hideResult(); });
+
+  update();
+  if (document.fonts && document.fonts.load) {
+    Promise.all([
+      document.fonts.load(`700 40px "Noto Sans KR"`, '가'),
+      document.fonts.load(`400 40px "Noto Sans KR"`, '가')
+    ]).then(draw, draw);
+    document.fonts.ready.then(draw);
+  }
+})();
+</script>
+</body>
+</html>
